@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Sensor Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --bg-primary: #1a1c2c;
+            --bg-secondary: #2a2d3e;
+            --accent-primary: #6649d8;
+            --accent-secondary: #48a9a6;
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .sensor-card {
+            background-color: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .sensor-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent-primary);
+        }
+
+        .chart-container {
+            background-color: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            height: 400px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .chart-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 1200px;
+        }
+
+        .sensor-checkbox {
+            display: none;
+        }
+
+        .sensor-label {
+            background-color: var(--bg-primary);
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.3s;
+        }
+
+        .sensor-checkbox:checked + .sensor-label {
+            background-color: var(--accent-primary);
+        }
+
+        @media (max-width: 768px) {
+            .sensor-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>Sensor Dashboard</h1>
+            <div id="connection-status">Connected</div>
+        </div>
+
+        <div class="sensor-grid">
+            <div class="sensor-card">
+                <h3>Sensor 1</h3>
+                <div class="sensor-value" id="sensor1">0</div>
+            </div>
+            <div class="sensor-card">
+                <h3>Sensor 2</h3>
+                <div class="sensor-value" id="sensor2">0</div>
+            </div>
+            <div class="sensor-card">
+                <h3>Sensor 3</h3>
+                <div class="sensor-value" id="sensor3">0</div>
+            </div>
+            <div class="sensor-card">
+                <h3>Sensor 4</h3>
+                <div class="sensor-value" id="sensor4">0</div>
+            </div>
+            <div class="sensor-card">
+                <h3>Sensor 5</h3>
+                <div class="sensor-value" id="sensor5">0</div>
+            </div>
+            <div class="sensor-card">
+                <h3>Sensor 6</h3>
+                <div class="sensor-value" id="sensor6">0</div>
+            </div>
+            <div class="sensor-card">
+                <h3>Sensor 7</h3>
+                <div class="sensor-value" id="sensor7">0</div>
+            </div>
+            <div class="sensor-card">
+                <h3>Sensor 8</h3>
+                <div class="sensor-value" id="sensor8">0</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2>Sensor History</h2>
+            <div class="chart-controls">
+                <input type="checkbox" id="sensor1-cb" class="sensor-checkbox" checked>
+                <label for="sensor1-cb" class="sensor-label">Sensor 1</label>
+                <input type="checkbox" id="sensor2-cb" class="sensor-checkbox">
+                <label for="sensor2-cb" class="sensor-label">Sensor 2</label>
+                <input type="checkbox" id="sensor3-cb" class="sensor-checkbox">
+                <label for="sensor3-cb" class="sensor-label">Sensor 3</label>
+                <input type="checkbox" id="sensor4-cb" class="sensor-checkbox">
+                <label for="sensor4-cb" class="sensor-label">Sensor 4</label>
+                <input type="checkbox" id="sensor5-cb" class="sensor-checkbox">
+                <label for="sensor5-cb" class="sensor-label">Sensor 5</label>
+                <input type="checkbox" id="sensor6-cb" class="sensor-checkbox">
+                <label for="sensor6-cb" class="sensor-label">Sensor 6</label>
+                <input type="checkbox" id="sensor7-cb" class="sensor-checkbox">
+                <label for="sensor7-cb" class="sensor-label">Sensor 7</label>
+                <input type="checkbox" id="sensor8-cb" class="sensor-checkbox">
+                <label for="sensor8-cb" class="sensor-label">Sensor 8</label>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const config = {
+            updateInterval: 60000,
+            historyPoints: 120,
+            apiEndpoints: {
+                sensors: "{{ url_for('get_sensor_data') }}"
+            }
+        };
+
+        let chart;
+
+        async function fetchSensorData() {
+            try {
+                const response = await fetch(config.apiEndpoints.sensors);
+                if (!response.ok) throw new Error('Network response was not ok');
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching sensor data:', error);
+                document.getElementById('connection-status').textContent = 'Disconnected';
+                document.getElementById('connection-status').style.color = '#ff4444';
+                return null;
+            }
+        }
+
+        function updateSensorDisplays(data) {
+            for (let i = 1; i <= 8; i++) {
+                const element = document.getElementById(`sensor${i}`);
+                if (element) {
+                    element.textContent = data[`sensor${i}`][0].toFixed(3);  // Get the first (newest) value since data is ordered DESC
+                }
+            }
+        }
+
+        function updateChart(data) {
+            // const now = new Date().toLocaleTimeString([], 
+            //     {hour: '2-digit', minute:'2-digit', second: '2-digit'});
+            
+            
+            // chart.data.labels.push(now);
+            
+            // Object.values(data).forEach((value, index) => {
+            //     chart.data.datasets[index].data.push(value);
+            // });
+
+            // if (chart.data.labels.length > config.maxDataPoints) {
+            //     chart.data.labels.shift();
+            //     chart.data.datasets.forEach(dataset => dataset.data.shift());
+            // }
+
+
+            // Clear existing data
+            chart.data.labels = [];
+            chart.data.datasets.forEach(dataset => dataset.data = []);
+
+            // Get timestamps and format them
+            const timeStamps = data.timestamps.reverse().map(timestamp => {
+                return new Date(timestamp).toLocaleString();
+            });
+            
+            // Update labels and datasets
+            chart.data.labels = timeStamps;
+            chart.data.datasets.forEach((dataset, index) => {
+                const sensorKey = `sensor${index + 1}`;
+                // dataset.data = data[sensorKey].reverse();  // Reverse to show oldest first
+                dataset.data = data.sensor_data[sensorKey].reverse();  // Reverse to show oldest first
+            });
+    
+
+            chart.update('none');
+        }
+
+        async function updateDashboard() {
+            // const sensorData = await fetchSensorData();
+            // if (!sensorData) return;
+            
+            // updateSensorDisplays({
+            //     sensor1: sensorData.sensor1[sensorData.sensor1.length - 1],
+            //     sensor2: sensorData.sensor2[sensorData.sensor2.length - 1],
+            //     sensor3: sensorData.sensor3[sensorData.sensor3.length - 1],
+            //     sensor4: sensorData.sensor4[sensorData.sensor4.length - 1],
+            //     sensor5: sensorData.sensor5[sensorData.sensor5.length - 1],
+            //     sensor6: sensorData.sensor6[sensorData.sensor6.length - 1],
+            //     sensor7: sensorData.sensor7[sensorData.sensor7.length - 1],
+            //     sensor8: sensorData.sensor8[sensorData.sensor8.length - 1]
+            // });
+            
+            // updateChart(sensorData);
+        
+            const response = await fetchSensorData();
+            if (!response) return;
+            
+            updateSensorDisplays(response.sensor_data);
+            updateChart(response);
+        }
+
+        function initializeChart() {
+            const ctx = document.getElementById('chart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: Array.from({length: 8}, (_, i) => ({
+                        label: `Sensor ${i + 1}`,
+                        data: [],
+                        borderColor: `hsl(${i * 45}, 70%, 60%)`,
+                        tension: 0.4,
+                        hidden: i !== 0,
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        fill: false
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    return tooltipItems[0].label;
+                                },
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(3)}°C`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 60,
+                            min: 0,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                stepSize: 10,
+                                callback: function(value) {
+                                    return Number(value).toFixed(0) + '°C';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                maxTicksLimit: 10,
+                                callback: function(value, index) {
+                                // Show only every 12th label (120 points ÷ 10 labels)
+                                if (index % 12 === 0) {
+                                    const date = new Date(this.getLabelForValue(value));
+                                    return date.toLocaleTimeString();
+                                }
+                                return '';
+                                }
+                            }
+                        }
+                    },
+                    animation: { duration: 0 },
+                    elements: { line: { tension: 0.4 } }
+                }
+            });
+
+            document.querySelectorAll('.sensor-checkbox').forEach((checkbox, index) => {
+                checkbox.addEventListener('change', (e) => {
+                    chart.data.datasets[index].hidden = !e.target.checked;
+                    chart.update();
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeChart();
+            setInterval(updateDashboard, config.updateInterval);
+            updateDashboard();
+        });
+    </script>
+</body>
+</html>

@@ -46,7 +46,7 @@ def main():
                             except ValueError as e:
                                 print(f"Error parsing sensor data: {str(e)}")
                     
-                time.sleep(30) # 600ms
+                time.sleep(60) # 60000ms
                 
             except (OSError, serial.SerialException):
                 print("Connection lost - reconnecting...")

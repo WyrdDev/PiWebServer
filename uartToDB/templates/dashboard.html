@@ -180,7 +180,7 @@
 
     <script>
         const config = {
-            updateInterval: 60000,
+            updateInterval: 30000,
             historyPoints: 120,
             apiEndpoints: {
                 sensors: "{{ url_for('get_sensor_data') }}"
@@ -206,7 +206,7 @@
             for (let i = 1; i <= 8; i++) {
                 const element = document.getElementById(`sensor${i}`);
                 if (element) {
-                    element.textContent = data[`sensor${i}`][0].toFixed(3);  // Get the first (newest) value since data is ordered DESC
+                    element.textContent = data[`sensor${i}`][0].toFixed(3) + " °C";  // Get the first (newest) value since data is ordered DESC
                 }
             }
         }

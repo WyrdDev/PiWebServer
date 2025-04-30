@@ -1,0 +1,2 @@
+RaspiberryPi 3B WebServer.
+It Receives few temperature sensor data from a ESP32 (by UART) and shows this data in a dashboard (backend in Flask).

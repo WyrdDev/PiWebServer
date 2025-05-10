@@ -59,8 +59,8 @@
             border-radius: 10px;
             padding: 15px;
             margin-bottom: 20px;
-            height: 400px;
-            max-width: 1200px;
+            height: auto;
+            max-width: 1170px;
             width: 100%;
         }
 
@@ -172,6 +172,16 @@
                 <input type="checkbox" id="sensor8-cb" class="sensor-checkbox">
                 <label for="sensor8-cb" class="sensor-label">Sensor 8</label>
             </div>
+            <div class="mb-4 flex justify-end">
+                <select id="timeRange" class="bg-gray-800 text-white rounded p-2">
+                    <option value="1">Last Hour</option>
+                    <option value="2">Last 2 Hours</option>
+                    <option value="3">Last 3 Hours</option>
+                    <option value="6">Last 6 Hours</option>
+                    <option value="12">Last 12 Hours</option>
+                    <option value="24">Last 24 Hours</option>
+                </select>
+            </div>
             <div class="chart-wrapper">
                 <canvas id="chart"></canvas>
             </div>
@@ -189,15 +199,15 @@
 
         let chart;
 
+        let selectedTimeRange = 1; // Default to 1 hour
+
         async function fetchSensorData() {
             try {
-                const response = await fetch(config.apiEndpoints.sensors);
+                const response = await fetch(`${config.apiEndpoints.sensors}?hours=${selectedTimeRange}`);
                 if (!response.ok) throw new Error('Network response was not ok');
                 return await response.json();
             } catch (error) {
                 console.error('Error fetching sensor data:', error);
-                document.getElementById('connection-status').textContent = 'Disconnected';
-                document.getElementById('connection-status').style.color = '#ff4444';
                 return null;
             }
         }
@@ -286,7 +296,8 @@
                         tension: 0.4,
                         hidden: i !== 0,
                         borderWidth: 2,
-                        pointRadius: 3,
+                        pointRadius: selectedTimeRange >= 6 ? 0 : 1,  // Conditional point radius
+                        pointHoverRadius: 4,
                         fill: false
                     }))
                 },
@@ -324,14 +335,10 @@
                             grid: { color: 'rgba(255, 255, 255, 0.1)' },
                             ticks: {
                                 color: 'rgba(255, 255, 255, 0.7)',
-                                maxTicksLimit: 10,
+                                maxTicksLimit: 12, // Show maximum 12 ticks on x-axis
                                 callback: function(value, index) {
-                                // Show only every 12th label (120 points ÷ 10 labels)
-                                if (index % 12 === 0) {
                                     const date = new Date(this.getLabelForValue(value));
                                     return date.toLocaleTimeString();
-                                }
-                                return '';
                                 }
                             }
                         }
@@ -351,7 +358,19 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             initializeChart();
-            setInterval(updateDashboard, config.updateInterval);
+            document.getElementById('timeRange').addEventListener('change', function(e) {
+                selectedTimeRange = parseInt(e.target.value);
+                
+                // Update point radius for all datasets
+                chart.data.datasets.forEach(dataset => {
+                    dataset.pointRadius = selectedTimeRange >= 6 ? 0 : 1;
+                });
+                
+                updateDashboard(); // Fetch new data immediately when time range changes
+                chart.update();
+            });
+            
+            setInterval(updateDashboard, config.updateInterval);            
             updateDashboard();
         });
     </script>
